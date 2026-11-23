@@ -1,0 +1,34 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Node / pnpm
+node_modules/
+dist/
+build/
+.vite/
+.expo/
+*.log
+
+# Python / uv
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Cloudflare / Wrangler
+.wrangler/
+.dev.vars
+
+# Local SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / Editor
+.DS_Store
+Thumbs.db

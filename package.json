@@ -1,0 +1,11 @@
+{
+  "name": "mathlab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-Assisted Computational and Mathematical Learning Workbench",
+  "packageManager": "pnpm@9.0.0",
+  "scripts": {
+    "dev:web": "pnpm --filter web dev",
+    "dev:mobile": "pnpm --filter mobile start"
+  }
+}

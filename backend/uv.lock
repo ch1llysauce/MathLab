@@ -1,0 +1,2 @@
+# Placeholder lockfile; run `uv sync` or `uv lock` inside backend/ to populate.
+version = 1

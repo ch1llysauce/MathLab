@@ -1,0 +1,1 @@
+-- Initial database seed file for MathLab (Supabase PostgreSQL).
