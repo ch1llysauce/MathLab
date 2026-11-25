@@ -5,11 +5,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from app.api.routes.ai import router as ai_router
+from app.api.routes.auth import router as auth_router
 from app.api.routes.compute import router as compute_router
 from app.api.routes.health import router as health_router
 from app.api.routes.notebooks import router as notebooks_router
 from app.api.routes.reasoning import router as reasoning_router
 from app.api.routes.verification import router as verification_router
+from app.api.routes.visualization import router as visualization_router
 from app.core.config import settings
 from app.core.exceptions import MathLabError
 
@@ -61,3 +64,6 @@ app.include_router(compute_router, prefix="/api/v1")
 app.include_router(reasoning_router, prefix="/api/v1")
 app.include_router(verification_router, prefix="/api/v1")
 app.include_router(notebooks_router, prefix="/api/v1")
+app.include_router(visualization_router, prefix="/api/v1")
+app.include_router(ai_router, prefix="/api/v1")
+app.include_router(auth_router, prefix="/api/v1")

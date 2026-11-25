@@ -2,7 +2,7 @@
 
 Base prefix: `/api/v1`
 
-> **Implementation Status:** `GET /api/v1/health`, `GET /api/v1/compute/operations`, `POST /api/v1/compute` (M1), `POST /api/v1/reasoning/analyze` (M2), `POST /api/v1/verification/check` (M3), and the `/api/v1/notebooks` endpoints (M4) are implemented in [backend/app/main.py](../../backend/app/main.py). All remaining endpoints below are target design contracts defined in [DEVELOPMENT.md](../../DEVELOPMENT.md#L427-L450).
+> **Implementation Status:** `GET /api/v1/health`, `GET /api/v1/compute/operations`, `POST /api/v1/compute` (M1), `POST /api/v1/reasoning/analyze` (M2), `POST /api/v1/verification/check` (M3), `/api/v1/notebooks` (M4), `POST /api/v1/visualization/plot` (M5), and `/api/v1/ai` (M6) are implemented in [backend/app/main.py](../../backend/app/main.py). All remaining endpoints below are target design contracts defined in [DEVELOPMENT.md](../../DEVELOPMENT.md#L427-L450).
 
 ## 1. Conventions
 
@@ -27,17 +27,21 @@ Base prefix: `/api/v1`
 | Method | Endpoint | Purpose | Status |
 |---|---|---|---|
 | `GET` | `/api/v1/health` | Service health check | Implemented |
+| `GET` | `/api/v1/auth/me` | Current user / guest status | Implemented (M7) |
 | `GET` | `/api/v1/compute/operations` | List approved operations | Implemented (M1) |
 | `POST` | `/api/v1/compute` | Execute mathematical operations | Implemented (M1) |
 | `POST` | `/api/v1/reasoning/analyze` | Classify problem & select method | Implemented (M2) |
 | `POST` | `/api/v1/verification/check` | Verify a computed result | Implemented (M3) |
-| `POST` | `/api/v1/visualization/plot` | Generate 2D/3D plot datasets | Planned (M5) |
+| `POST` | `/api/v1/visualization/plot` | Generate 2D/3D plot datasets | Implemented (M5) |
 | `GET` | `/api/v1/notebooks` | List user notebooks | Implemented (M4) |
 | `POST` | `/api/v1/notebooks` | Create a notebook | Implemented (M4) |
 | `GET` | `/api/v1/notebooks/{id}` | Retrieve notebook and cells | Implemented (M4) |
 | `PUT` | `/api/v1/notebooks/{id}` | Update notebook / cells | Implemented (M4) |
+| `DELETE` | `/api/v1/notebooks/{id}` | Delete a notebook | Implemented (M4+) |
 | `POST` | `/api/v1/notebooks/{id}/execute` | Execute notebook cells sequentially | Implemented (M4) |
-| `POST` | `/api/v1/ai/explain` | Generate grounded AI explanation | Planned (M6) |
+| `GET` | `/api/v1/notebooks/{id}/export` | Export notebook as Markdown/JSON | Implemented (M4+) |
+| `POST` | `/api/v1/ai/explain` | Generate grounded AI explanation | Implemented (M6) |
+| `GET` | `/api/v1/ai/examples` | List guided worked examples | Implemented (M6) |
 
 ---
 

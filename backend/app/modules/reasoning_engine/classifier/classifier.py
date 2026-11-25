@@ -7,6 +7,7 @@ from typing import Any
 
 import sympy as sp
 
+from app.modules.math_engine.calculus.operations import parse_ode_equation
 from app.modules.math_engine.linear_algebra.operations import parse_matrix
 from app.modules.math_engine.parser.safe_parser import (
     parse_math_expression,
@@ -28,6 +29,15 @@ OPERATION_DOMAIN_MAP = {
     "int": "calculus",
     "integral": "calculus",
     "limit": "calculus",
+    "partial_derivative": "calculus",
+    "partial": "calculus",
+    "pdiff": "calculus",
+    "taylor_series": "calculus",
+    "taylor": "calculus",
+    "series": "calculus",
+    "solve_ode": "calculus",
+    "ode": "calculus",
+    "dsolve": "calculus",
     "matrix_determinant": "linear_algebra",
     "det": "linear_algebra",
     "determinant": "linear_algebra",
@@ -46,6 +56,9 @@ OPERATION_DOMAIN_MAP = {
     "eigenvectors": "linear_algebra",
     "matrix_add": "linear_algebra",
     "matrix_multiply": "linear_algebra",
+    "linear_system_solve": "linear_algebra",
+    "solve_system": "linear_algebra",
+    "linsolve": "linear_algebra",
     "numerical_eval": "numerical",
     "evalf": "numerical",
     "evaluate": "numerical",
@@ -147,7 +160,9 @@ def classify_problem(
         if mat_b is not None:
             features["matrix_b_shape"] = [mat_b.rows, mat_b.cols]
 
-        if mat_b is not None:
+        if op_key in ("linear_system_solve", "solve_system", "linsolve"):
+            ptype = "linear_system_of_equations"
+        elif mat_b is not None:
             ptype = "binary_matrix_operation"
         elif mat_a is not None and mat_a.rows == mat_a.cols:
             ptype = "square_matrix_analysis"
@@ -165,7 +180,15 @@ def classify_problem(
     # Expression-based classification
     parsed: sp.Basic | sp.Eq | None = None
     if expression and expression.strip():
-        if op_key in ("solve", "root_find", "nsolve") or (not op_key and "=" in expression):
+        if op_key in ("solve_ode", "ode", "dsolve"):
+            ode_eq, _, _ = parse_ode_equation(
+                expression,
+                variable=(variable or "x"),
+                dependent=str(opts.get("dependent") or "y"),
+                assumptions=assumptions,
+            )
+            parsed = ode_eq
+        elif op_key in ("solve", "root_find", "nsolve") or (not op_key and "=" in expression):
             parsed = parse_math_input(expression, assumptions=assumptions)
         else:
             parsed = parse_math_expression(expression, assumptions=assumptions)
@@ -187,6 +210,12 @@ def classify_problem(
             ptype = "definite_integral" if has_bounds else "indefinite_integral"
         elif op_key == "limit":
             ptype = "symbolic_limit"
+        elif op_key in ("partial_derivative", "partial", "pdiff"):
+            ptype = "partial_derivative"
+        elif op_key in ("taylor_series", "taylor", "series"):
+            ptype = "taylor_series_expansion"
+        elif op_key in ("solve_ode", "ode", "dsolve"):
+            ptype = "ordinary_differential_equation"
         else:
             ptype = "calculus_problem"
         return ClassificationResult(

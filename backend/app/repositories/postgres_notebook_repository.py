@@ -45,22 +45,52 @@ class PostgresNotebookRepository:
             prepare_threshold=None,
         )
 
-    def list_notebooks(self) -> list[dict[str, Any]]:
+    def ensure_user(self, user_id: str, email: str | None) -> None:
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT n.id::text AS id,
-                       n.title,
-                       n.mode,
-                       n.created_at,
-                       n.updated_at,
-                       COUNT(c.id)::int AS cell_count
-                FROM notebooks n
-                LEFT JOIN notebook_cells c ON c.notebook_id = n.id
-                GROUP BY n.id
-                ORDER BY n.updated_at DESC
-                """
+                INSERT INTO users (id, email, created_at)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (id) DO NOTHING
+                """,
+                (user_id, email or f"{user_id}@supabase.local", utc_now_iso()),
             )
+
+    def list_notebooks(self, user_id: str | None = None) -> list[dict[str, Any]]:
+        with self._connect() as conn, conn.cursor() as cur:
+            if user_id is not None:
+                cur.execute(
+                    """
+                    SELECT n.id::text AS id,
+                           n.title,
+                           n.mode,
+                           n.created_at,
+                           n.updated_at,
+                           COUNT(c.id)::int AS cell_count
+                    FROM notebooks n
+                    LEFT JOIN notebook_cells c ON c.notebook_id = n.id
+                    WHERE n.user_id = %s
+                    GROUP BY n.id
+                    ORDER BY n.updated_at DESC
+                    """,
+                    (user_id,),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT n.id::text AS id,
+                           n.title,
+                           n.mode,
+                           n.created_at,
+                           n.updated_at,
+                           COUNT(c.id)::int AS cell_count
+                    FROM notebooks n
+                    LEFT JOIN notebook_cells c ON c.notebook_id = n.id
+                    WHERE n.user_id IS NULL
+                    GROUP BY n.id
+                    ORDER BY n.updated_at DESC
+                    """
+                )
             rows = cur.fetchall()
             return [
                 {
@@ -75,9 +105,14 @@ class PostgresNotebookRepository:
             ]
 
     def get_notebook(self, notebook_id: str) -> NotebookModel | None:
+        try:
+            uuid.UUID(notebook_id)
+        except ValueError:
+            return None
+
         with self._connect() as conn, conn.cursor() as cur:
             cur.execute(
-                "SELECT id::text AS id, title, mode, created_at, updated_at FROM notebooks WHERE id = %s",
+                "SELECT id::text AS id, user_id::text AS user_id, title, mode, created_at, updated_at FROM notebooks WHERE id = %s",
                 (notebook_id,),
             )
             nb_row = cur.fetchone()
@@ -182,6 +217,7 @@ class PostgresNotebookRepository:
 
             return NotebookModel(
                 id=nb_row["id"],
+                user_id=nb_row.get("user_id"),
                 title=nb_row["title"],
                 mode=nb_row["mode"],
                 created_at=_iso(nb_row["created_at"]),
@@ -208,8 +244,8 @@ class PostgresNotebookRepository:
                 cur.execute("DELETE FROM notebook_cells WHERE notebook_id = %s", (notebook.id,))
             else:
                 cur.execute(
-                    "INSERT INTO notebooks (id, title, mode, created_at, updated_at) VALUES (%s, %s, %s, %s, %s)",
-                    (notebook.id, notebook.title, notebook.mode, notebook.created_at, notebook.updated_at),
+                    "INSERT INTO notebooks (id, user_id, title, mode, created_at, updated_at) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (notebook.id, notebook.user_id, notebook.title, notebook.mode, notebook.created_at, notebook.updated_at),
                 )
 
             for cell in notebook.cells:
@@ -309,3 +345,13 @@ class PostgresNotebookRepository:
                 }
                 for row in rows
             ]
+
+    def delete_notebook(self, notebook_id: str) -> bool:
+        try:
+            uuid.UUID(notebook_id)
+        except ValueError:
+            return False
+
+        with self._connect() as conn, conn.cursor() as cur:
+            cur.execute("DELETE FROM notebooks WHERE id = %s", (notebook_id,))
+            return cur.rowcount > 0

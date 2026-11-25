@@ -24,6 +24,7 @@ from app.modules.math_engine.registry.registry import OPERATION_REGISTRY
 from app.modules.notebook_engine.dependencies import (
     extract_referenced_symbols,
     resolve_defined_variable,
+    split_inline_assignment,
 )
 from app.modules.reasoning_engine.analyzer import analyze_mathematical_problem
 from app.modules.verification_engine.verifier import verify_computation
@@ -196,7 +197,8 @@ def execute_notebook(
                 cell.error_message = None
                 executed_ids.append(cell.id)
             else:
-                resolved_expr = cell.expression
+                inline_var, expr_candidate = split_inline_assignment(cell)
+                resolved_expr = expr_candidate
                 if resolved_expr and resolved_expr.strip():
                     resolved_expr, _ = _substitute_expr_text(
                         resolved_expr,
@@ -247,8 +249,9 @@ def execute_notebook(
                 cell.error_message = None
                 executed_ids.append(cell.id)
 
-                if cell.assign_to and cell.assign_to.strip():
-                    target_sym = parse_symbol(cell.assign_to.strip(), assumptions=merged_assumptions)
+                target_name = (cell.assign_to or "").strip() or inline_var
+                if target_name:
+                    target_sym = parse_symbol(target_name, assumptions=merged_assumptions)
                     bind_expr = raw["result"].removesuffix(" + C").strip()
                     active_vars[target_sym.name] = VariableBinding(
                         symbol_name=target_sym.name,

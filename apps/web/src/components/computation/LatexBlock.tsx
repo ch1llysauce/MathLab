@@ -20,12 +20,12 @@ export function LatexBlock({ latex, displayMode = true }: LatexBlockProps) {
   }
 
   if (renderError) {
-    return <code className="text-sm text-amber-300">{latex}</code>;
+    return <code className="text-sm text-amber-600 dark:text-amber-400">{latex}</code>;
   }
 
   return (
     <div
-      className="overflow-x-auto py-1 text-lg text-slate-50"
+      className="overflow-x-auto overflow-y-hidden py-1.5 text-base leading-normal text-[var(--text-primary)]"
       dangerouslySetInnerHTML={{ __html: html }}
     />
   );

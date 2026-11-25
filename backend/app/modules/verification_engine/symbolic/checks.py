@@ -7,7 +7,8 @@ from typing import Any
 
 import sympy as sp
 
-from app.modules.math_engine.linear_algebra.operations import parse_matrix
+from app.modules.math_engine.calculus.operations import parse_ode_equation
+from app.modules.math_engine.linear_algebra.operations import _parse_vector, parse_matrix
 from app.modules.math_engine.parser.safe_parser import (
     format_sympy_expr,
     parse_math_expression,
@@ -235,6 +236,85 @@ def run_symbolic_checks(
                     ),
                 )
             )
+        return checks
+
+    if op in ("linear_system_solve", "solve_system", "linsolve") and opts.get("matrix") is not None and opts.get("vector") is not None:
+        details = opts.get("details") or {}
+        sol_vec = details.get("solution_vector")
+        if sol_vec and details.get("unique", True):
+            mat_a = parse_matrix(opts["matrix"], assumptions=assumptions)
+            vec_b = _parse_vector(opts["vector"], assumptions=assumptions)
+            vec_x = _parse_vector(sol_vec, assumptions=assumptions)
+            residual = sp.simplify(mat_a * vec_x - vec_b)
+            passed = bool(residual == sp.zeros(mat_a.rows, 1))
+            checks.append(
+                VerificationCheck(
+                    check_type="substitution",
+                    name="linear_system_substitution",
+                    passed=passed,
+                    message=(
+                        "Verified A*x = b identically."
+                        if passed
+                        else "Solution vector failed A*x = b substitution."
+                    ),
+                )
+            )
+        return checks
+
+    if op in ("solve_ode", "ode", "dsolve") and expression:
+        dep_name = str(opts.get("dependent") or "y").strip()
+        indep_name = (variable or "x").strip()
+        ode_eq, _, y_func = parse_ode_equation(
+            expression,
+            variable=indep_name,
+            dependent=dep_name,
+            assumptions=assumptions,
+        )
+        rhs_str = (opts.get("details") or {}).get("rhs") or (
+            result.split("=", 1)[1].strip() if "=" in result else result.strip()
+        )
+        rhs_expr = parse_math_expression(rhs_str, assumptions=assumptions)
+        residual = sp.simplify((ode_eq.lhs - ode_eq.rhs).subs(y_func, rhs_expr).doit())
+        passed = bool(residual == 0)
+        checks.append(
+            VerificationCheck(
+                check_type="symbolic",
+                name="ode_substitution",
+                passed=passed,
+                message=(
+                    "Substituting y(x) back into the ODE yields 0 identically."
+                    if passed
+                    else f"ODE residual did not simplify to 0 (got {format_sympy_expr(residual)})."
+                ),
+            )
+        )
+        return checks
+
+    if op in ("taylor_series", "taylor", "series") and expression:
+        orig_expr = parse_math_expression(expression, assumptions=assumptions)
+        series_expr = parse_math_expression(result, assumptions=assumptions)
+        free_vars = sorted(s.name for s in orig_expr.free_symbols)
+        var_sym = parse_symbol(variable, assumptions=assumptions) if variable else (
+            sp.Symbol(free_vars[0]) if len(free_vars) == 1 else sp.Symbol("x")
+        )
+        pt_expr = parse_math_expression(str(opts.get("point", "0")), assumptions=assumptions)
+        try:
+            center_diff = sp.simplify(series_expr.subs(var_sym, pt_expr) - orig_expr.subs(var_sym, pt_expr))
+            passed = bool(center_diff == 0)
+            checks.append(
+                VerificationCheck(
+                    check_type="symbolic",
+                    name="taylor_center_match",
+                    passed=passed,
+                    message=(
+                        f"Taylor polynomial matches f({format_sympy_expr(pt_expr)}) exactly at expansion center."
+                        if passed
+                        else "Taylor polynomial failed to match at expansion center."
+                    ),
+                )
+            )
+        except Exception:
+            pass
         return checks
 
     return checks

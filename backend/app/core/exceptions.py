@@ -79,3 +79,27 @@ class NotFoundError(MathLabError):
             status_code=404,
             details=details,
         )
+
+
+class UnauthorizedError(MathLabError):
+    """Raised when authentication credentials are missing or invalid."""
+
+    def __init__(self, message: str = "Authentication required.", *, details: dict[str, Any] | None = None) -> None:
+        super().__init__(
+            message,
+            code="UNAUTHORIZED",
+            status_code=401,
+            details=details,
+        )
+
+
+class ForbiddenError(MathLabError):
+    """Raised when the authenticated user lacks access to a resource."""
+
+    def __init__(self, message: str = "Access forbidden.", *, details: dict[str, Any] | None = None) -> None:
+        super().__init__(
+            message,
+            code="FORBIDDEN",
+            status_code=403,
+            details=details,
+        )

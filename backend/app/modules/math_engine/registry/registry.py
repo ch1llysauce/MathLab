@@ -17,8 +17,12 @@ from app.modules.math_engine.calculus.operations import (
     differentiate_expr,
     integrate_expr,
     limit_expr,
+    partial_derivative_expr,
+    solve_ode_expr,
+    taylor_series_expr,
 )
 from app.modules.math_engine.linear_algebra.operations import (
+    linear_system_solve,
     matrix_add,
     matrix_determinant,
     matrix_eigenvalues,
@@ -104,6 +108,48 @@ def _handle_limit(p: dict[str, Any]) -> dict[str, Any]:
         direction=opts.get("direction", "+-"),
         assumptions=p.get("assumptions"),
     )
+
+
+def _handle_partial_derivative(p: dict[str, Any]) -> dict[str, Any]:
+    opts = p.get("options") or {}
+    return partial_derivative_expr(
+        _require_str(p, "expression"),
+        variable=p.get("variable"),
+        variables=opts.get("variables"),
+        order=opts.get("order", 1),
+        assumptions=p.get("assumptions"),
+    )
+
+
+def _handle_taylor_series(p: dict[str, Any]) -> dict[str, Any]:
+    opts = p.get("options") or {}
+    return taylor_series_expr(
+        _require_str(p, "expression"),
+        variable=p.get("variable"),
+        point=opts.get("point", "0"),
+        order=opts.get("order", 5),
+        assumptions=p.get("assumptions"),
+    )
+
+
+def _handle_solve_ode(p: dict[str, Any]) -> dict[str, Any]:
+    opts = p.get("options") or {}
+    return solve_ode_expr(
+        _require_str(p, "expression"),
+        variable=p.get("variable"),
+        dependent=opts.get("dependent"),
+        ics=opts.get("ics"),
+        assumptions=p.get("assumptions"),
+    )
+
+
+def _handle_linear_system(p: dict[str, Any]) -> dict[str, Any]:
+    opts = p.get("options") or {}
+    matrix = opts.get("matrix")
+    vector = opts.get("vector")
+    if matrix is None or vector is None:
+        raise InvalidExpressionError("Fields 'options.matrix' and 'options.vector' are required.")
+    return linear_system_solve(matrix, vector, assumptions=p.get("assumptions"))
 
 
 def _handle_matrix_op(fn: Callable[..., dict[str, Any]]) -> Callable[[dict[str, Any]], dict[str, Any]]:
@@ -223,6 +269,34 @@ OPERATION_REGISTRY = OperationRegistry(
             aliases=("int", "integral"),
         ),
         OperationSpec("limit", "calculus", "Compute a symbolic limit.", _handle_limit),
+        OperationSpec(
+            "partial_derivative",
+            "calculus",
+            "Compute a partial or mixed partial derivative.",
+            _handle_partial_derivative,
+            aliases=("partial", "pdiff"),
+        ),
+        OperationSpec(
+            "taylor_series",
+            "calculus",
+            "Compute a Taylor polynomial expansion.",
+            _handle_taylor_series,
+            aliases=("taylor", "series"),
+        ),
+        OperationSpec(
+            "solve_ode",
+            "calculus",
+            "Solve a 1st or 2nd order ordinary differential equation.",
+            _handle_solve_ode,
+            aliases=("ode", "dsolve"),
+        ),
+        OperationSpec(
+            "linear_system_solve",
+            "linear_algebra",
+            "Solve a linear system Ax = b.",
+            _handle_linear_system,
+            aliases=("solve_system", "linsolve"),
+        ),
         OperationSpec(
             "matrix_determinant",
             "linear_algebra",

@@ -163,4 +163,58 @@ def run_numerical_checks(
                 )
         return checks
 
+    if op in ("partial_derivative", "partial", "pdiff") and expression and variable:
+        variables_opt = opts.get("variables")
+        order = opts.get("order", 1)
+        if not variables_opt and order == 1:
+            orig_expr = parse_math_expression(expression, assumptions=assumptions)
+            res_expr = parse_math_expression(result, assumptions=assumptions)
+            var_sym = parse_symbol(variable, assumptions=assumptions)
+            other_vars = sorted((orig_expr.free_symbols | res_expr.free_symbols) - {var_sym}, key=lambda s: s.name)
+            h = 1e-6
+            residuals = []
+            for pt in _SAMPLE_POINTS:
+                fixed = {sym: 1.1 + 0.17 * idx for idx, sym in enumerate(other_vars)}
+                f_plus = _safe_eval_complex(orig_expr, {**fixed, var_sym: pt + h})
+                f_minus = _safe_eval_complex(orig_expr, {**fixed, var_sym: pt - h})
+                df_res = _safe_eval_complex(res_expr, {**fixed, var_sym: pt})
+                if f_plus is not None and f_minus is not None and df_res is not None:
+                    residuals.append(abs(((f_plus - f_minus) / (2.0 * h)) - df_res))
+            if residuals:
+                max_err = max(residuals)
+                checks.append(
+                    VerificationCheck(
+                        check_type="numerical",
+                        name="partial_finite_difference",
+                        passed=max_err < 1e-4,
+                        residual=max_err,
+                        message=f"Partial derivative finite-difference check; max error = {max_err:.3e}.",
+                    )
+                )
+        return checks
+
+    if op in ("taylor_series", "taylor", "series") and expression:
+        orig_expr = parse_math_expression(expression, assumptions=assumptions)
+        series_expr = parse_math_expression(result, assumptions=assumptions)
+        free_vars = sorted(s.name for s in orig_expr.free_symbols)
+        if len(free_vars) == 1 or variable:
+            var_sym = parse_symbol(variable, assumptions=assumptions) if variable else sp.Symbol(free_vars[0])
+            pt_val = _safe_eval_complex(parse_math_expression(str(opts.get("point", "0")), assumptions=assumptions), {})
+            if pt_val is not None:
+                probe = float(pt_val.real) + 0.01
+                v_orig = _safe_eval_complex(orig_expr, {var_sym: probe})
+                v_ser = _safe_eval_complex(series_expr, {var_sym: probe})
+                if v_orig is not None and v_ser is not None:
+                    err = abs(v_orig - v_ser)
+                    checks.append(
+                        VerificationCheck(
+                            check_type="numerical",
+                            name="taylor_neighborhood_residual",
+                            passed=err < 1e-3,
+                            residual=err,
+                            message=f"Local Taylor approximation error at x0+0.01 is {err:.3e}.",
+                        )
+                    )
+        return checks
+
     return checks

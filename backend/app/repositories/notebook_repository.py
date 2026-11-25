@@ -38,8 +38,15 @@ class NotebookRepository:
         with self._connect() as conn:
             conn.executescript(
                 """
+                CREATE TABLE IF NOT EXISTS users (
+                    id TEXT PRIMARY KEY,
+                    email TEXT UNIQUE NOT NULL,
+                    created_at TEXT NOT NULL
+                );
+
                 CREATE TABLE IF NOT EXISTS notebooks (
                     id TEXT PRIMARY KEY,
+                    user_id TEXT,
                     title TEXT NOT NULL,
                     mode TEXT NOT NULL DEFAULT 'computational',
                     created_at TEXT NOT NULL,
@@ -93,24 +100,51 @@ class NotebookRepository:
                 """
             )
 
-    def list_notebooks(self) -> list[dict[str, Any]]:
+            # Ensure user_id column exists for pre-existing local SQLite files.
+            cols = {row["name"] for row in conn.execute("PRAGMA table_info(notebooks)").fetchall()}
+            if "user_id" not in cols:
+                conn.execute("ALTER TABLE notebooks ADD COLUMN user_id TEXT")
+
+    def ensure_user(self, user_id: str, email: str | None) -> None:
         with self._connect() as conn:
-            rows = conn.execute(
-                """
-                SELECT n.id, n.title, n.mode, n.created_at, n.updated_at,
-                       COUNT(c.id) AS cell_count
-                FROM notebooks n
-                LEFT JOIN notebook_cells c ON c.notebook_id = n.id
-                GROUP BY n.id
-                ORDER BY n.updated_at DESC
-                """
-            ).fetchall()
+            conn.execute(
+                "INSERT OR IGNORE INTO users (id, email, created_at) VALUES (?, ?, ?)",
+                (user_id, email or f"{user_id}@local", utc_now_iso()),
+            )
+
+    def list_notebooks(self, user_id: str | None = None) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            if user_id is not None:
+                rows = conn.execute(
+                    """
+                    SELECT n.id, n.title, n.mode, n.created_at, n.updated_at,
+                           COUNT(c.id) AS cell_count
+                    FROM notebooks n
+                    LEFT JOIN notebook_cells c ON c.notebook_id = n.id
+                    WHERE n.user_id = ?
+                    GROUP BY n.id
+                    ORDER BY n.updated_at DESC
+                    """,
+                    (user_id,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT n.id, n.title, n.mode, n.created_at, n.updated_at,
+                           COUNT(c.id) AS cell_count
+                    FROM notebooks n
+                    LEFT JOIN notebook_cells c ON c.notebook_id = n.id
+                    WHERE n.user_id IS NULL
+                    GROUP BY n.id
+                    ORDER BY n.updated_at DESC
+                    """
+                ).fetchall()
             return [dict(row) for row in rows]
 
     def get_notebook(self, notebook_id: str) -> NotebookModel | None:
         with self._connect() as conn:
             nb_row = conn.execute(
-                "SELECT id, title, mode, created_at, updated_at FROM notebooks WHERE id = ?",
+                "SELECT id, user_id, title, mode, created_at, updated_at FROM notebooks WHERE id = ?",
                 (notebook_id,),
             ).fetchone()
             if nb_row is None:
@@ -191,6 +225,7 @@ class NotebookRepository:
 
             return NotebookModel(
                 id=nb_row["id"],
+                user_id=nb_row["user_id"],
                 title=nb_row["title"],
                 mode=nb_row["mode"],
                 created_at=nb_row["created_at"],
@@ -219,8 +254,8 @@ class NotebookRepository:
                 conn.execute("DELETE FROM notebook_cells WHERE notebook_id = ?", (notebook.id,))
             else:
                 conn.execute(
-                    "INSERT INTO notebooks (id, title, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-                    (notebook.id, notebook.title, notebook.mode, notebook.created_at, notebook.updated_at),
+                    "INSERT INTO notebooks (id, user_id, title, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+                    (notebook.id, notebook.user_id, notebook.title, notebook.mode, notebook.created_at, notebook.updated_at),
                 )
 
             for cell in notebook.cells:
@@ -311,3 +346,8 @@ class NotebookRepository:
                 }
                 for row in rows
             ]
+
+    def delete_notebook(self, notebook_id: str) -> bool:
+        with self._connect() as conn:
+            cursor = conn.execute("DELETE FROM notebooks WHERE id = ?", (notebook_id,))
+            return cursor.rowcount > 0

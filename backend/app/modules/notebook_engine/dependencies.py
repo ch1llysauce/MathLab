@@ -6,11 +6,46 @@ from typing import Any
 
 from app.core.exceptions import InvalidExpressionError
 from app.modules.math_engine.parser.safe_parser import (
+    ALLOWED_CONSTANTS,
     parse_math_expression,
     parse_math_input,
     parse_symbol,
 )
 from app.models.notebook import NotebookCellModel
+
+_EQUATION_OPERATIONS = {"solve", "solve_ode", "root_find"}
+
+
+def _is_matrix_operation(op: str) -> bool:
+    return op.startswith("matrix_") or op == "linear_system_solve"
+
+
+def split_inline_assignment(cell: NotebookCellModel) -> tuple[str | None, str | None]:
+    """Extract an optional leading `var = expr` binding for non-equation math cells."""
+    if cell.cell_type != "math" or not cell.expression:
+        return None, cell.expression
+
+    op = (cell.operation or "simplify").strip().lower()
+    raw = cell.expression.strip()
+    if _is_matrix_operation(op) or op in _EQUATION_OPERATIONS or "=" not in raw:
+        return None, cell.expression
+
+    parts = raw.split("=")
+    if len(parts) != 2:
+        return None, cell.expression
+
+    lhs, rhs = parts[0].strip(), parts[1].strip()
+    if not lhs or not rhs or lhs in ALLOWED_CONSTANTS:
+        return None, cell.expression
+    if cell.variable and lhs == cell.variable.strip():
+        return None, cell.expression
+
+    try:
+        sym = parse_symbol(lhs)
+    except InvalidExpressionError:
+        return None, cell.expression
+
+    return sym.name, rhs
 
 
 def resolve_defined_variable(cell: NotebookCellModel) -> str | None:
@@ -19,14 +54,8 @@ def resolve_defined_variable(cell: NotebookCellModel) -> str | None:
         return None
     if cell.assign_to and cell.assign_to.strip():
         return cell.assign_to.strip()
-    if (cell.operation or "").strip().lower() == "assign" and cell.expression and "=" in cell.expression:
-        lhs, _ = cell.expression.split("=", 1)
-        lhs_clean = lhs.strip()
-        try:
-            return parse_symbol(lhs_clean).name
-        except InvalidExpressionError:
-            return None
-    return None
+    inline_var, _ = split_inline_assignment(cell)
+    return inline_var
 
 
 def extract_referenced_symbols(cell: NotebookCellModel) -> set[str]:
@@ -37,11 +66,30 @@ def extract_referenced_symbols(cell: NotebookCellModel) -> set[str]:
     refs: set[str] = set()
     op = (cell.operation or "").strip().lower()
 
-    if cell.expression and cell.expression.strip():
-        expr_text = cell.expression.strip()
-        if op == "assign" and "=" in expr_text:
-            _, rhs = expr_text.split("=", 1)
-            expr_text = rhs.strip()
+    if _is_matrix_operation(op):
+        def _collect_entry_symbols(entry: Any) -> None:
+            try:
+                refs.update(sym.name for sym in parse_math_expression(str(entry)).free_symbols)
+            except Exception:
+                pass
+
+        opts = cell.options or {}
+        for key in ("matrix", "matrix_a", "matrix_b"):
+            mat = opts.get(key)
+            if isinstance(mat, list):
+                for row in mat:
+                    if isinstance(row, list):
+                        for entry in row:
+                            _collect_entry_symbols(entry)
+        vec = opts.get("vector")
+        if isinstance(vec, list):
+            for entry in vec:
+                _collect_entry_symbols(entry)
+        return refs
+
+    _, expr_candidate = split_inline_assignment(cell)
+    if expr_candidate and expr_candidate.strip():
+        expr_text = expr_candidate.strip()
         try:
             parsed = parse_math_input(expr_text) if "=" in expr_text else parse_math_expression(expr_text)
             refs.update(sym.name for sym in parsed.free_symbols)

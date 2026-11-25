@@ -223,3 +223,60 @@ def matrix_multiply(
             "shape": [product.rows, product.cols],
         },
     }
+
+
+def _parse_vector(raw_vector: Any, assumptions: dict[str, str] | None = None) -> sp.Matrix:
+    if not isinstance(raw_vector, list) or not raw_vector:
+        raise InvalidExpressionError("Field 'options.vector' must be a non-empty list.")
+    # Accept either 1D [b1, b2, ...] or 2D column [[b1], [b2], ...]
+    if all(isinstance(item, list) for item in raw_vector):
+        mat = parse_matrix(raw_vector, assumptions=assumptions)
+        if mat.cols != 1:
+            raise InvalidExpressionError("Right-hand vector must have 1 column.")
+        return mat
+    return parse_matrix([[entry] for entry in raw_vector], assumptions=assumptions)
+
+
+def linear_system_solve(
+    matrix: Any,
+    vector: Any,
+    assumptions: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    """Solve the linear system A*x = b symbolically."""
+    mat_a = parse_matrix(matrix, assumptions=assumptions)
+    vec_b = _parse_vector(vector, assumptions=assumptions)
+    if mat_a.rows != vec_b.rows:
+        raise DomainError(
+            f"Incompatible dimensions for Ax = b: A has {mat_a.rows} rows, b has {vec_b.rows} rows."
+        )
+
+    syms = sp.symbols(f"x1:{mat_a.cols + 1}")
+    sol_set = sp.linsolve((mat_a, vec_b), *syms)
+    if not sol_set:
+        return {
+            "result": "No solution (inconsistent system)",
+            "latex": r"\emptyset",
+            "details": {
+                "method": "symbolic_linsolve",
+                "consistent": False,
+                "shape": [mat_a.rows, mat_a.cols],
+            },
+        }
+
+    sol_tuple = list(next(iter(sol_set)))
+    sol_strs = [format_sympy_expr(expr) for expr in sol_tuple]
+    is_unique = not any(expr.has(*syms) for expr in sol_tuple)
+    formatted = ", ".join(f"{sym.name} = {val}" for sym, val in zip(syms, sol_strs))
+    latex_parts = ", ".join(f"{sp.latex(sym)} = {sp.latex(expr)}" for sym, expr in zip(syms, sol_tuple))
+
+    return {
+        "result": formatted,
+        "latex": latex_parts,
+        "details": {
+            "method": "symbolic_linsolve",
+            "consistent": True,
+            "unique": is_unique,
+            "solution_vector": sol_strs,
+            "shape": [mat_a.rows, mat_a.cols],
+        },
+    }

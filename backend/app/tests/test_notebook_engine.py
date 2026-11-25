@@ -66,6 +66,13 @@ class TestNotebookExecutionAndDependencies:
         assert reloaded.json()["cells"][2]["result"]["result_text"] == "3*x^2 + 7"
         assert len(repo.list_history(nb_id)) == 1
 
+        history_resp = client.get(f"/api/v1/notebooks/{nb_id}/history")
+        assert history_resp.status_code == 200
+        history_items = history_resp.json()
+        assert len(history_items) == 1
+        assert len(history_items[0]["executed_cell_ids"]) == 3
+        assert history_items[0]["notebook"]["id"] == nb_id
+
     def test_editing_earlier_cell_invalidates_only_dependent_downstream_cells(self, isolated_client):
         client, _ = isolated_client
 
@@ -141,3 +148,100 @@ class TestNotebookCRUDAndSecurity:
         assert cells[0]["status"] == "error"
         assert "Forbidden token" in cells[0]["error_message"]
         assert cells[1]["status"] == "stale"
+
+    def test_export_and_delete_notebook(self, isolated_client):
+        client, _ = isolated_client
+        create_resp = client.post(
+            "/api/v1/notebooks",
+            json={
+                "title": "Exportable Notebook",
+                "cells": [{"operation": "differentiate", "expression": "x^3 + 2*x", "variable": "x"}],
+            },
+        )
+        nb_id = create_resp.json()["id"]
+        client.post(f"/api/v1/notebooks/{nb_id}/execute", json={})
+
+        md_resp = client.get(f"/api/v1/notebooks/{nb_id}/export?format=markdown")
+        assert md_resp.status_code == 200
+        md_body = md_resp.json()
+        assert md_body["filename"].endswith(".md")
+        assert "# Exportable Notebook" in md_body["content"]
+        assert "3*x^2 + 2" in md_body["content"]
+
+        json_resp = client.get(f"/api/v1/notebooks/{nb_id}/export?format=json")
+        assert json_resp.status_code == 200
+        assert json_resp.json()["filename"].endswith(".json")
+
+        del_resp = client.delete(f"/api/v1/notebooks/{nb_id}")
+        assert del_resp.status_code == 204
+
+        missing = client.get(f"/api/v1/notebooks/{nb_id}")
+        assert missing.status_code == 404
+
+    def test_stateless_execution_runs_without_persisting_to_database(self, isolated_client):
+        client, _ = isolated_client
+        resp = client.post(
+            "/api/v1/notebooks/execute-stateless",
+            json={
+                "title": "Guest Scratchpad",
+                "mode": "computational",
+                "cells": [
+                    {"id": "g1", "operation": "assign", "expression": "f = x^2 + 3*x"},
+                    {"id": "g2", "operation": "differentiate", "expression": "f", "variable": "x"},
+                ],
+            },
+        )
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["history_id"] == "stateless"
+        assert body["executed_cell_ids"] == ["g1", "g2"]
+        assert body["notebook"]["cells"][1]["result"]["result_text"] == "2*x + 3"
+        assert body["notebook"]["cells"][1]["depends_on"] == ["g1"]
+        assert client.get("/api/v1/notebooks").json() == []
+
+    def test_inline_assignment_works_across_expression_operations(self, isolated_client):
+        client, _ = isolated_client
+        create_resp = client.post(
+            "/api/v1/notebooks",
+            json={
+                "title": "Inline Assignment Notebook",
+                "cells": [
+                    {"operation": "simplify", "expression": "f = (x^2 - 1)/(x - 1)"},
+                    {"operation": "differentiate", "expression": "f", "variable": "x"},
+                ],
+            },
+        )
+        assert create_resp.status_code == 201
+        nb_id = create_resp.json()["id"]
+
+        exec_resp = client.post(f"/api/v1/notebooks/{nb_id}/execute", json={})
+        assert exec_resp.status_code == 200
+        nb = exec_resp.json()["notebook"]
+        assert nb["cells"][0]["status"] == "valid"
+        assert nb["cells"][0]["result"]["result_text"] == "x + 1"
+        assert nb["variables"]["f"]["value_expr"] == "x + 1"
+        assert nb["cells"][1]["status"] == "valid"
+        assert nb["cells"][1]["result"]["result_text"] == "1"
+
+    def test_matrix_cell_ignores_stale_expression_for_dependencies(self, isolated_client):
+        client, _ = isolated_client
+        resp = client.post(
+            "/api/v1/notebooks/execute-stateless",
+            json={
+                "title": "Matrix Deps Check",
+                "mode": "computational",
+                "cells": [
+                    {"id": "c1", "operation": "simplify", "expression": "f = x^3 + 2*x"},
+                    {
+                        "id": "c2",
+                        "operation": "matrix_inverse",
+                        "expression": "f",
+                        "options": {"matrix": [[1, 0], [0, 1]]},
+                    },
+                ],
+            },
+        )
+        assert resp.status_code == 200
+        cells = resp.json()["notebook"]["cells"]
+        assert cells[1]["status"] == "valid"
+        assert cells[1]["depends_on"] == []

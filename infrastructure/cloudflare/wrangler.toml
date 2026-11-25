@@ -1,2 +1,8 @@
 name = "mathlab-edge"
+main = "workers/api-proxy.ts"
 compatibility_date = "2025-01-01"
+
+[vars]
+# Configure the Python FastAPI backend URL before deploying with `wrangler deploy`.
+BACKEND_API_URL = "https://api.mathlab.example.com"
+ALLOWED_ORIGIN = "https://mathlab.pages.dev"

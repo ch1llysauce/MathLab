@@ -55,6 +55,7 @@ class NotebookModel:
 
     id: str
     title: str
+    user_id: str | None = None
     mode: str = "computational"
     created_at: str = ""
     updated_at: str = ""

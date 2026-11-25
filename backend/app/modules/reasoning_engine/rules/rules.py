@@ -122,6 +122,24 @@ def evaluate_rules(
                     ),
                 )
             )
+
+        if op in ("linear_system_solve", "solve_system", "linsolve"):
+            vec_raw = opts.get("vector")
+            vec_len = len(vec_raw) if isinstance(vec_raw, list) else 0
+            compat = isinstance(vec_raw, list) and vec_len == mat_a.rows
+            checks.append(
+                RuleCheck(
+                    rule_id="linear_system_dimension_match",
+                    description="Linear system Ax = b requires vector b length to match A.rows.",
+                    passed=compat,
+                    severity="required",
+                    message=(
+                        f"System dimensions compatible ({mat_a.rows} equations, {mat_a.cols} unknowns)."
+                        if compat
+                        else f"Vector b length ({vec_len}) must match matrix row count ({mat_a.rows})."
+                    ),
+                )
+            )
         return checks
 
     expr = classification.parsed_expr
@@ -173,7 +191,7 @@ def evaluate_rules(
             )
 
     # Calculus rules
-    if op in ("differentiate", "diff", "derivative", "integrate", "int", "integral", "limit"):
+    if op in ("differentiate", "diff", "derivative", "integrate", "int", "integral", "limit", "taylor_series", "taylor", "series"):
         if len(free_vars) > 1 and not variable:
             checks.append(
                 RuleCheck(
@@ -184,6 +202,30 @@ def evaluate_rules(
                     message=f"Multiple variables present ({', '.join(free_vars)}); specify 'variable'.",
                 )
             )
+
+    if op in ("partial_derivative", "partial", "pdiff") and not variable and not opts.get("variables") and len(free_vars) > 1:
+        checks.append(
+            RuleCheck(
+                rule_id="partial_variable_required",
+                description="Multivariable partial derivative requires 'variable' or 'options.variables'.",
+                passed=False,
+                severity="required",
+                message=f"Specify target variable among ({', '.join(free_vars)}).",
+            )
+        )
+
+    if op in ("taylor_series", "taylor", "series"):
+        order_val = opts.get("order", 5)
+        valid_order = isinstance(order_val, int) and 1 <= order_val <= 12
+        checks.append(
+            RuleCheck(
+                rule_id="taylor_order_bounds",
+                description="Taylor series order must be an integer between 1 and 12.",
+                passed=valid_order,
+                severity="required",
+                message=f"Taylor order {order_val} is within [1, 12]." if valid_order else "Taylor order must be between 1 and 12.",
+            )
+        )
 
     if op in ("integrate", "int", "integral"):
         lower = opts.get("lower")

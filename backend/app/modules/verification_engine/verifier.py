@@ -32,6 +32,18 @@ _EXACT_SYMBOLIC_OPS = {
     "eigenvalues",
     "matrix_eigenvectors",
     "eigenvectors",
+    "partial_derivative",
+    "partial",
+    "pdiff",
+    "taylor_series",
+    "taylor",
+    "series",
+    "solve_ode",
+    "ode",
+    "dsolve",
+    "linear_system_solve",
+    "solve_system",
+    "linsolve",
 }
 
 

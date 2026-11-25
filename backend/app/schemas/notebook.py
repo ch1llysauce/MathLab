@@ -87,6 +87,26 @@ class NotebookExecuteRequest(BaseModel):
     )
 
 
+class StatelessCellInputSchema(CellInputSchema):
+    """Cell payload for stateless (guest/local) sequential execution."""
+
+    status: Literal["idle", "valid", "stale", "error"] = Field(default="idle")
+    depends_on: list[str] = Field(default_factory=list)
+    error_message: str | None = None
+    result: CellResultSchema | None = None
+
+
+class NotebookStatelessExecuteRequest(NotebookExecuteRequest):
+    """Request payload for running notebook cells without database persistence."""
+
+    id: str | None = None
+    title: str = Field(default="Guest Notebook", min_length=1, max_length=200)
+    mode: Literal["computational", "learning"] = Field(default="computational")
+    created_at: str | None = None
+    cells: list[StatelessCellInputSchema] = Field(default_factory=list)
+    variables: dict[str, VariableBindingSchema] = Field(default_factory=dict)
+
+
 class NotebookSummarySchema(BaseModel):
     """Summary item for notebook listing."""
 
@@ -117,3 +137,14 @@ class NotebookExecuteResponseSchema(BaseModel):
     executed_cell_ids: list[str] = Field(default_factory=list)
     skipped_cell_ids: list[str] = Field(default_factory=list)
     history_id: str
+
+
+class NotebookHistoryEntrySchema(BaseModel):
+    """Saved execution history snapshot for a notebook."""
+
+    id: str
+    notebook_id: str
+    created_at: str
+    executed_cell_ids: list[str] = Field(default_factory=list)
+    skipped_cell_ids: list[str] = Field(default_factory=list)
+    notebook: NotebookResponseSchema | None = None
