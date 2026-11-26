@@ -64,6 +64,50 @@ function MathText({ text }: { text: string }) {
   );
 }
 
+/** Renders multi-line explanation text with clean bullet items and inline KaTeX. */
+function FormattedMathBlock({ text, className }: { text: string; className: string }) {
+  const normalized = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\\n(?![a-zA-Z])/g, "\n")
+    .trim();
+
+  const lines = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length <= 1 && !/^[-•]\s+/.test(normalized)) {
+    return (
+      <p className={className}>
+        <MathText text={normalized} />
+      </p>
+    );
+  }
+
+  return (
+    <div className={`space-y-1 ${className}`}>
+      {lines.map((line, idx) => {
+        const bulletMatch = line.match(/^[-•]\s+(.+)$/);
+        if (bulletMatch) {
+          return (
+            <div key={idx} className="flex items-start gap-1.5 pl-1">
+              <span className="mt-[2px] shrink-0 text-[var(--text-muted)]">•</span>
+              <span className="min-w-0">
+                <MathText text={bulletMatch[1]} />
+              </span>
+            </div>
+          );
+        }
+        return (
+          <p key={idx}>
+            <MathText text={line} />
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
 export function StepByStepGuide({
   title = "Step-by-Step Solution",
   sourceLabel,
@@ -107,9 +151,10 @@ export function StepByStepGuide({
               </span>
               <div className="min-w-0 space-y-0.5">
                 <div className="font-semibold text-[var(--text-primary)]">{step.title}</div>
-                <p className="text-[11px] leading-relaxed text-[var(--text-secondary)]">
-                  <MathText text={step.content} />
-                </p>
+                <FormattedMathBlock
+                  text={step.content}
+                  className="text-[11px] leading-relaxed text-[var(--text-secondary)]"
+                />
               </div>
             </li>
           ))}
@@ -121,9 +166,10 @@ export function StepByStepGuide({
           <div className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
             Why this result
           </div>
-          <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-primary)]">
-            <MathText text={summary} />
-          </p>
+          <FormattedMathBlock
+            text={summary}
+            className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-primary)]"
+          />
         </div>
       )}
     </div>

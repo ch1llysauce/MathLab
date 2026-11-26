@@ -155,11 +155,11 @@ export function App() {
             </nav>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setTheme((prev) => (prev === "light" ? "dark" : "light"))}
-              className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
+              className="shrink-0 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
               title="Switch color theme"
             >
               {theme === "light" ? "☾ Dark" : "☀ Light"}
@@ -173,7 +173,7 @@ export function App() {
                     ? `Offline: ${healthError} (${API_BASE_URL || window.location.origin})`
                     : `Connecting to ${API_BASE_URL || window.location.origin}`
               }
-              className="flex items-center gap-1.5 rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs"
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${

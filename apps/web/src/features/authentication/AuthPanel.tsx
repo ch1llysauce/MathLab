@@ -266,13 +266,13 @@ export function AuthPanel({
   const headerControl = user ? (
     <>
       <div className="flex items-center gap-2">
-        <span className="max-w-[180px] truncate rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-secondary)]">
+        <span className="max-w-[140px] truncate whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs text-[var(--text-secondary)] sm:max-w-[180px]">
           {user.email ?? user.id}
         </span>
         <button
           type="button"
           onClick={() => setConfirmSignOutOpen(true)}
-          className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]"
+          className="shrink-0 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]"
         >
           Sign Out
         </button>
@@ -328,7 +328,7 @@ export function AuthPanel({
             switchMode("signin");
             setOpen(true);
           }}
-          className="rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]"
+          className="shrink-0 whitespace-nowrap rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)]"
         >
           Sign In
         </button>

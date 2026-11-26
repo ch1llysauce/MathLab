@@ -98,9 +98,9 @@ const STATUS_LABEL: Record<NotebookCell["status"], string> = {
 };
 
 const CELL_ACTION_BTN =
-  "rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] disabled:opacity-40";
+  "whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-[var(--text-secondary)] transition hover:border-[var(--border-strong)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] disabled:opacity-40";
 const CELL_ACTION_ACTIVE_BTN =
-  "rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-2.5 py-1 font-medium text-[var(--text-primary)] shadow-xs transition";
+  "whitespace-nowrap rounded border border-[var(--border-strong)] bg-[var(--bg-surface)] px-2.5 py-1 font-medium text-[var(--text-primary)] shadow-xs transition";
 
 const OP_PLACEHOLDERS: Record<string, string> = {
   assign: "Bind a symbol, e.g. f = x^3 + 2*x (Shift+Enter to run)",
@@ -216,6 +216,7 @@ export function NotebookWorkbench({
   const [dirty, setDirty] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const [loadingList, setLoadingList] = useState(true);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1053,11 +1054,58 @@ export function NotebookWorkbench({
   ];
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[268px_1fr]">
-      {/* Left Sidebar */}
-      <aside className="space-y-6 lg:border-r lg:border-[var(--border-hairline)] lg:pr-6">
+    <div className="grid gap-4 lg:grid-cols-[268px_1fr] lg:gap-8">
+      {/* Left Sidebar (compact collapsible switcher on mobile) */}
+      <aside className="space-y-3 lg:space-y-6 lg:border-r lg:border-[var(--border-hairline)] lg:pr-6">
+        <div className="flex items-center justify-between gap-2 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-2 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen((prev) => !prev)}
+            className="flex min-w-0 flex-1 items-center justify-between gap-2 text-left"
+          >
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="truncate text-xs font-semibold text-[var(--text-primary)]">
+                  {activeNb?.title ?? "Notebooks"}
+                </span>
+                <span className="shrink-0 font-mono text-[10px] text-[var(--text-muted)]">
+                  ({summaries.length})
+                </span>
+              </div>
+              <p className="truncate font-mono text-[10px] text-[var(--text-muted)]">
+                {isAuthenticated ? "Cloud synced" : "Guest"}
+                {activeNb
+                  ? ` · ${Object.keys(activeNb.variables).length} symbol${Object.keys(activeNb.variables).length === 1 ? "" : "s"}`
+                  : ""}
+              </p>
+            </div>
+            <span className="shrink-0 text-xs text-[var(--text-muted)]">
+              {mobileSidebarOpen ? "▴" : "▾"}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setMobileSidebarOpen(false);
+              void handleCreateNotebook();
+            }}
+            disabled={busy}
+            className="shrink-0 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-surface)]"
+          >
+            + New
+          </button>
+        </div>
+
+        <div
+          className={`${
+            mobileSidebarOpen
+              ? "block space-y-5 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-3"
+              : "hidden"
+          } lg:block lg:space-y-6 lg:border-0 lg:bg-transparent lg:p-0`}
+        >
         <div>
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 hidden items-center justify-between lg:flex">
             <div>
               <h2 className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                 Notebooks
@@ -1100,14 +1148,17 @@ export function NotebookWorkbench({
               No notebooks yet. Click + New to create one.
             </p>
           ) : (
-            <ul className="max-h-40 space-y-0.5 overflow-y-auto lg:max-h-none">
+            <ul className="max-h-48 space-y-0.5 overflow-y-auto lg:max-h-none">
               {summaries.map((item) => {
                 const selected = activeNb?.id === item.id;
                 return (
                   <li key={item.id}>
                     <button
                       type="button"
-                      onClick={() => void handleSelectNotebook(item.id)}
+                      onClick={() => {
+                        setMobileSidebarOpen(false);
+                        void handleSelectNotebook(item.id);
+                      }}
                       className={`w-full rounded px-2.5 py-1.5 text-left text-xs transition ${
                         selected
                           ? "bg-[var(--bg-subtle)] font-medium text-[var(--text-primary)]"
@@ -1152,6 +1203,7 @@ export function NotebookWorkbench({
             )}
           </div>
         )}
+        </div>
       </aside>
 
       {/* Main Document Canvas */}
@@ -1236,7 +1288,7 @@ export function NotebookWorkbench({
                     type="button"
                     onClick={() => void handleSave()}
                     disabled={busy || !dirty}
-                    className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40"
+                    className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40"
                   >
                     Save
                   </button>
@@ -1245,7 +1297,7 @@ export function NotebookWorkbench({
                     onClick={() => void handleExecute(true)}
                     disabled={busy}
                     title="Re-run only outdated, ready (unrun), or errored cells and skip valid cells"
-                    className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+                    className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
                   >
                     Run Outdated
                   </button>
@@ -1254,20 +1306,20 @@ export function NotebookWorkbench({
                     onClick={() => void handleExecute(false)}
                     disabled={busy}
                     title="Re-run every math cell in order from a clean variable state"
-                    className="rounded bg-[var(--accent-ink)] px-3 py-1 text-xs font-semibold text-[var(--accent-ink-fg)] hover:opacity-90 disabled:opacity-60"
+                    className="whitespace-nowrap rounded bg-[var(--accent-ink)] px-3 py-1 text-xs font-semibold text-[var(--accent-ink-fg)] hover:opacity-90 disabled:opacity-60"
                   >
                     {busy ? "Running..." : "Run All"}
                   </button>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+              <div className="flex flex-wrap items-center justify-start gap-2 text-xs lg:justify-end">
                 {isAuthenticated && (
                   <button
                     type="button"
                     onClick={() => void handleOpenHistory()}
                     disabled={busy}
-                    className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                   >
                     History
                   </button>
@@ -1275,14 +1327,14 @@ export function NotebookWorkbench({
                 <button
                   type="button"
                   onClick={() => void handleExport("markdown")}
-                  className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 >
                   Export .md
                 </button>
                 <button
                   type="button"
                   onClick={() => void handleExport("json")}
-                  className="rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                  className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                 >
                   Export .json
                 </button>
@@ -1290,7 +1342,7 @@ export function NotebookWorkbench({
                   type="button"
                   onClick={() => setConfirmDeleteOpen(true)}
                   disabled={busy}
-                  className="ml-1 rounded border border-rose-500/25 bg-[var(--bg-surface)] px-2.5 py-1 text-rose-500/80 transition hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-500"
+                  className="whitespace-nowrap rounded border border-rose-500/25 bg-[var(--bg-surface)] px-2.5 py-1 text-rose-500/80 transition hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-500 lg:ml-1"
                 >
                   Delete Notebook
                 </button>
@@ -1734,14 +1786,14 @@ export function NotebookWorkbench({
                             onClick={() => void handleExecute(false, cell.id)}
                             disabled={busy}
                             title="Run up to this cell (Shift + Enter)"
-                            className="rounded bg-[var(--accent-ink)] px-3 py-1 font-semibold text-[var(--accent-ink-fg)] transition hover:opacity-90 disabled:opacity-50"
+                            className="whitespace-nowrap rounded bg-[var(--accent-ink)] px-3 py-1 font-semibold text-[var(--accent-ink-fg)] transition hover:opacity-90 disabled:opacity-50"
                           >
                             Run
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteCell(cell.id)}
-                            className="rounded border border-rose-500/25 bg-[var(--bg-subtle)] px-2.5 py-1 text-rose-500/80 transition hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-500"
+                            className="whitespace-nowrap rounded border border-rose-500/25 bg-[var(--bg-subtle)] px-2.5 py-1 text-rose-500/80 transition hover:border-rose-500/50 hover:bg-rose-500/10 hover:text-rose-500"
                             title="Remove cell"
                           >
                             Remove

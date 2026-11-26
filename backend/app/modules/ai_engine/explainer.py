@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from app.core.exceptions import InvalidExpressionError
@@ -117,6 +118,12 @@ def _build_grounded_steps(
         },
     ]
     return steps
+
+
+def _clean_llm_text(text: str) -> str:
+    """Normalize escaped newlines from LLM JSON while preserving LaTeX commands like \\neq."""
+    normalized = re.sub(r"\\n(?![a-zA-Z])", "\n", text.replace("\r\n", "\n"))
+    return normalized.strip()
 
 
 def _build_deterministic_summary(
@@ -250,16 +257,19 @@ def generate_grounded_explanation(
                 raw_steps = parsed_llm.get("steps")
                 if isinstance(raw_steps, list):
                     cleaned_steps = [
-                        {"title": str(s["title"]).strip(), "content": str(s["content"]).strip()}
+                        {
+                            "title": _clean_llm_text(str(s["title"])),
+                            "content": _clean_llm_text(str(s["content"])),
+                        }
                         for s in raw_steps
                         if isinstance(s, dict) and s.get("title") and s.get("content")
                     ]
                     if cleaned_steps:
                         steps = cleaned_steps
                 if parsed_llm["summary"].strip():
-                    summary = parsed_llm["summary"].strip()
+                    summary = _clean_llm_text(parsed_llm["summary"])
             else:
-                summary = llm_text
+                summary = _clean_llm_text(llm_text)
             explanation_source = "llm_grounded"
 
     return {
