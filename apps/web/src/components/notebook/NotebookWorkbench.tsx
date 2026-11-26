@@ -1266,50 +1266,75 @@ export function NotebookWorkbench({
                   ) : null}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="inline-flex rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-xs">
-                    {(["computational", "learning"] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        onClick={() => void handleToggleMode(m)}
-                        className={`rounded-sm px-2.5 py-1 capitalize ${
-                          activeNb.mode === m
-                            ? "bg-[var(--bg-surface)] font-medium text-[var(--text-primary)] shadow-xs"
-                            : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                        }`}
-                      >
-                        {m}
-                      </button>
-                    ))}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <div
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-strong)] bg-[var(--bg-subtle)] py-0.5 pr-0.5 pl-2.5 text-xs"
+                    title="Switch notebook behavior between Computational mode and guided Learning mode"
+                  >
+                    <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                      Mode
+                    </span>
+                    <div className="inline-flex items-center gap-0.5">
+                      {(["computational", "learning"] as const).map((m) => {
+                        const isActive = activeNb.mode === m;
+                        return (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => void handleToggleMode(m)}
+                            className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 capitalize transition ${
+                              isActive
+                                ? "bg-[var(--bg-surface)] font-semibold text-[var(--text-primary)] shadow-xs ring-1 ring-[var(--border-strong)]"
+                                : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            }`}
+                          >
+                            {isActive && (
+                              <span
+                                className={`h-1.5 w-1.5 rounded-full ${
+                                  m === "computational" ? "bg-emerald-500" : "bg-sky-500"
+                                }`}
+                              />
+                            )}
+                            {m}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => void handleSave()}
-                    disabled={busy || !dirty}
-                    className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40"
-                  >
-                    Save
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleExecute(true)}
-                    disabled={busy}
-                    title="Re-run only outdated, ready (unrun), or errored cells and skip valid cells"
-                    className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
-                  >
-                    Run Outdated
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleExecute(false)}
-                    disabled={busy}
-                    title="Re-run every math cell in order from a clean variable state"
-                    className="whitespace-nowrap rounded bg-[var(--accent-ink)] px-3 py-1 text-xs font-semibold text-[var(--accent-ink-fg)] hover:opacity-90 disabled:opacity-60"
-                  >
-                    {busy ? "Running..." : "Run All"}
-                  </button>
+                  <span
+                    aria-hidden="true"
+                    className="hidden h-5 w-px bg-[var(--border-hairline)] sm:inline-block"
+                  />
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void handleSave()}
+                      disabled={busy || !dirty}
+                      className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-40"
+                    >
+                      Save
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleExecute(true)}
+                      disabled={busy}
+                      title="Re-run only outdated, ready (unrun), or errored cells and skip valid cells"
+                      className="whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] disabled:opacity-50"
+                    >
+                      Run Outdated
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleExecute(false)}
+                      disabled={busy}
+                      title="Re-run every math cell in order from a clean variable state"
+                      className="whitespace-nowrap rounded bg-[var(--accent-ink)] px-3 py-1 text-xs font-semibold text-[var(--accent-ink-fg)] hover:opacity-90 disabled:opacity-60"
+                    >
+                      {busy ? "Running..." : "Run All"}
+                    </button>
+                  </div>
                 </div>
               </div>
 

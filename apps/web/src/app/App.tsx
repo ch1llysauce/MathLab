@@ -119,47 +119,47 @@ export function App() {
     <div className="min-h-screen bg-[var(--bg-canvas)] text-[var(--text-primary)]">
       <ToastContainer />
       <header className="border-b border-[var(--border-hairline)] bg-[var(--bg-surface)]">
-        <div className="mx-auto flex max-w-[1380px] flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
-          <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-6">
-            <div className="flex items-center gap-2.5">
-              <MathLabLogo className="h-8 w-8 shrink-0" />
-              <div className="leading-tight">
-                <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
-                  MathLab
-                </h1>
-                <p className="text-xs text-[var(--text-muted)]">Computational Workbench</p>
-              </div>
+        <div className="mx-auto flex max-w-[1380px] flex-wrap items-center justify-between gap-x-2 gap-y-2.5 px-3 py-3 sm:gap-3 sm:px-8 sm:py-3.5">
+          <div className="order-1 flex min-w-0 items-center gap-2 sm:gap-2.5">
+            <MathLabLogo className="h-8 w-8 shrink-0" />
+            <div className="min-w-0 leading-tight">
+              <h1 className="text-base font-bold tracking-tight text-[var(--text-primary)] sm:text-lg">
+                MathLab
+              </h1>
+              <p className="truncate text-[11px] text-[var(--text-muted)] sm:text-xs">
+                Computational Workbench
+              </p>
             </div>
-
-            <nav className="flex max-w-full overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-xs sm:text-[13px]">
-              {(
-                [
-                  ["notebook", "Notebook"],
-                  ["compute", "Quick Compute"],
-                  ["visualize", "Visualization Studio"],
-                ] as const
-              ).map(([key, label]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setActiveTab(key)}
-                  className={`shrink-0 rounded-sm px-3 py-1.5 font-medium transition sm:px-3.5 ${
-                    activeTab === key
-                      ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs"
-                      : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <nav className="order-3 flex w-full overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-xs sm:order-4 xl:order-2 xl:ml-3 xl:w-auto xl:text-[13px]">
+            {(
+              [
+                ["notebook", "Notebook"],
+                ["compute", "Quick Compute"],
+                ["visualize", "Visualization Studio"],
+              ] as const
+            ).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setActiveTab(key)}
+                className={`flex-1 shrink-0 whitespace-nowrap rounded-sm px-2 py-1.5 text-center font-medium transition sm:px-3.5 xl:flex-initial ${
+                  activeTab === key
+                    ? "bg-[var(--bg-surface)] text-[var(--text-primary)] shadow-xs"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+
+          <div className="order-2 ml-auto flex items-center gap-1.5 sm:gap-2 xl:order-3 xl:ml-auto">
             <button
               type="button"
               onClick={() => setTheme((prev) => (prev === "light" ? "dark" : "light"))}
-              className="shrink-0 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
+              className="shrink-0 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-surface)] px-2.5 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] sm:px-3"
               title="Switch color theme"
             >
               {theme === "light" ? "☾ Dark" : "☀ Light"}
@@ -173,7 +173,7 @@ export function App() {
                     ? `Offline: ${healthError} (${API_BASE_URL || window.location.origin})`
                     : `Connecting to ${API_BASE_URL || window.location.origin}`
               }
-              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-3 py-1.5 text-xs"
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] px-2.5 py-1.5 text-xs sm:px-3"
             >
               <span
                 className={`h-1.5 w-1.5 rounded-full ${
@@ -184,7 +184,9 @@ export function App() {
                 {health ? "Online" : healthError ? "Offline" : "Connecting..."}
               </span>
             </div>
+          </div>
 
+          <div className="order-4 flex w-full items-center justify-between gap-2 border-t border-[var(--border-hairline)] pt-2 sm:order-3 sm:w-auto sm:border-0 sm:pt-0 xl:order-4">
             <AuthPanel
               user={user}
               onAuthChanged={() => setAuthVersion((v) => v + 1)}
