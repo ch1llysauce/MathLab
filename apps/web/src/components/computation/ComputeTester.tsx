@@ -25,6 +25,7 @@ import {
   preparePlottableExpression,
 } from "../../utils/operationLabels";
 import { AssumptionsEditor } from "../common/AssumptionsEditor";
+import { ErrorAlert } from "../common/ErrorAlert";
 import { MathKeypad } from "../common/MathKeypad";
 import {
   MatrixGridEditor,
@@ -684,12 +685,7 @@ export function ComputeTester({
         </div>
       </form>
 
-      {error && (
-        <div className="rounded border border-rose-500/40 bg-rose-500/10 p-3.5 text-xs text-rose-500">
-          <div className="font-mono font-semibold uppercase">{error.code}</div>
-          <p className="mt-1">{error.message}</p>
-        </div>
-      )}
+      {error && <ErrorAlert code={error.code} message={error.message} />}
 
       {result && (
         <div className="space-y-3 rounded-md border border-[var(--border-hairline)] bg-[var(--bg-surface)] p-4">

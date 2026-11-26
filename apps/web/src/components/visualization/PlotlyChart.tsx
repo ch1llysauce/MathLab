@@ -45,6 +45,9 @@ export function PlotlyChart({
 }: PlotlyChartProps) {
   const containerRef = useRef<PlotElementWithLayout | null>(null);
   const [dragMode, setDragMode] = useState<"pan" | "zoom">("pan");
+  const [isCompact, setIsCompact] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth < 640 : false
+  );
   const preservedCameraRef = useRef<{
     x?: [number, number];
     y?: [number, number];
@@ -60,10 +63,29 @@ export function PlotlyChart({
   const formattedTraces = useMemo(
     () =>
       traces.map((trace) => {
-        if (typeof trace.name !== "string") return trace;
-        return { ...trace, name: formatPlotlyTraceName(trace.name) };
+        let next =
+          typeof trace.name === "string"
+            ? { ...trace, name: formatPlotlyTraceName(trace.name) }
+            : trace;
+        if (plotType === "3d" && next.type === "surface" && next.showscale !== false) {
+          const existingBar =
+            next.colorbar && typeof next.colorbar === "object"
+              ? (next.colorbar as Record<string, unknown>)
+              : {};
+          next = {
+            ...next,
+            colorbar: {
+              ...existingBar,
+              thickness: isCompact ? 10 : 18,
+              len: isCompact ? 0.52 : 0.78,
+              x: isCompact ? 1.01 : 1.02,
+              tickfont: { size: isCompact ? 10 : 12 },
+            },
+          };
+        }
+        return next;
       }),
-    [traces]
+    [traces, plotType, isCompact]
   );
 
   const formattedTitle = useMemo(
@@ -103,14 +125,38 @@ export function PlotlyChart({
             plot_bgcolor: bg,
             font: commonFont,
             hoverlabel: hoverLabelStyle,
-            margin: { l: 10, r: 10, t: 36, b: 10 },
-            title: { text: formattedTitle, font: { size: 14, color: ink } },
+            margin: isCompact
+              ? { l: 4, r: 4, t: 34, b: 14 }
+              : { l: 10, r: 10, t: 36, b: 10 },
+            title: { text: formattedTitle, font: { size: isCompact ? 13 : 14, color: ink } },
             scene: {
-              xaxis: { title: { text: `<i>${layoutMeta.xaxis_title}</i>` }, gridcolor: grid },
-              yaxis: { title: { text: `<i>${layoutMeta.yaxis_title}</i>` }, gridcolor: grid },
-              zaxis: { title: { text: `<i>${layoutMeta.zaxis_title ?? "z"}</i>` }, gridcolor: grid },
+              xaxis: {
+                title: { text: `<i>${layoutMeta.xaxis_title}</i>` },
+                gridcolor: grid,
+                tickfont: { size: isCompact ? 10 : 11 },
+              },
+              yaxis: {
+                title: { text: `<i>${layoutMeta.yaxis_title}</i>` },
+                gridcolor: grid,
+                tickfont: { size: isCompact ? 10 : 11 },
+              },
+              zaxis: {
+                title: { text: `<i>${layoutMeta.zaxis_title ?? "z"}</i>` },
+                gridcolor: grid,
+                tickfont: { size: isCompact ? 10 : 11 },
+              },
+              camera: {
+                eye: isCompact ? { x: 1.55, y: 1.55, z: 1.3 } : { x: 1.3, y: 1.3, z: 1.2 },
+              },
             },
-            legend: { orientation: "h", y: -0.05 },
+            legend: {
+              orientation: "h",
+              x: 0,
+              xanchor: "left",
+              y: -0.04,
+              yanchor: "top",
+              font: { size: isCompact ? 11 : 12 },
+            },
           }
         : {
             paper_bgcolor: bg,
@@ -118,22 +164,39 @@ export function PlotlyChart({
             font: commonFont,
             hoverlabel: hoverLabelStyle,
             dragmode: dragMode,
-            margin: { l: 52, r: 20, t: 38, b: 44 },
-            title: { text: formattedTitle, font: { size: 14, color: ink } },
+            margin: isCompact
+              ? { l: 42, r: 12, t: 36, b: 64 }
+              : { l: 52, r: 20, t: 38, b: 56 },
+            title: { text: formattedTitle, font: { size: isCompact ? 13 : 14, color: ink } },
             xaxis: {
-              title: { text: `<i>${layoutMeta.xaxis_title}</i>` },
+              title: {
+                text: `<i>${layoutMeta.xaxis_title}</i>`,
+                standoff: isCompact ? 6 : 10,
+              },
+              automargin: true,
               gridcolor: grid,
               zerolinecolor: zero,
               ...(cam?.x ? { range: cam.x, autorange: false } : {}),
             },
             yaxis: {
-              title: { text: `<i>${layoutMeta.yaxis_title}</i>` },
+              title: {
+                text: `<i>${layoutMeta.yaxis_title}</i>`,
+                standoff: isCompact ? 4 : 8,
+              },
+              automargin: true,
               gridcolor: grid,
               zerolinecolor: zero,
               ...(equalAspect ? { scaleanchor: "x", scaleratio: 1 } : {}),
               ...(cam?.y ? { range: cam.y, autorange: false } : {}),
             },
-            legend: { orientation: "h", y: -0.2 },
+            legend: {
+              orientation: "h",
+              x: 0,
+              xanchor: "left",
+              y: isCompact ? -0.26 : -0.18,
+              yanchor: "top",
+              font: { size: isCompact ? 11 : 12 },
+            },
           };
 
     void Plotly.react(el, formattedTraces as Plotly.Data[], layout, {
@@ -188,7 +251,10 @@ export function PlotlyChart({
       });
     }
 
-    const handleResize = () => Plotly.Plots.resize(el);
+    const handleResize = () => {
+      setIsCompact(window.innerWidth < 640);
+      Plotly.Plots.resize(el);
+    };
     window.addEventListener("resize", handleResize);
     return () => {
       window.removeEventListener("resize", handleResize);
@@ -197,7 +263,7 @@ export function PlotlyChart({
       }
       el.removeAllListeners?.("plotly_relayout");
     };
-  }, [formattedTraces, formattedTitle, plotType, theme, layoutMeta, dragMode, equalAspect]);
+  }, [formattedTraces, formattedTitle, plotType, theme, layoutMeta, dragMode, equalAspect, isCompact]);
 
   function handleModeChange(nextMode: "pan" | "zoom") {
     setDragMode(nextMode);
@@ -351,7 +417,9 @@ export function PlotlyChart({
 
       <div
         ref={containerRef}
-        className="h-[320px] w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-surface)] sm:h-[440px]"
+        className={`w-full rounded-md border border-[var(--border-hairline)] bg-[var(--bg-surface)] ${
+          plotType === "3d" ? "h-[410px] sm:h-[460px]" : "h-[380px] sm:h-[440px]"
+        }`}
       />
     </div>
   );

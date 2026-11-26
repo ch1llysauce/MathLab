@@ -53,14 +53,58 @@ def _eval_grid_1d(expr: sp.Basic, var_sym: sp.Symbol, xs: np.ndarray) -> list[fl
     return ys
 
 
+def _raise_unbound_symbol_error(
+    names: list[str],
+    *,
+    is_3d: bool,
+    expr_str: str,
+    parameters: dict[str, float] | None,
+) -> None:
+    """Raise a user-friendly InvalidExpressionError for unknown symbols in plot expressions."""
+    quoted = ", ".join(f"'{n}'" for n in names)
+    param_keys = set(parameters or {})
+    looks_like_implicit_mul = any(
+        len(n) >= 2
+        and (
+            n.endswith(("x", "y"))
+            or any(n.startswith(p) and len(n) > len(p) for p in param_keys)
+        )
+        for n in names
+    )
+
+    if not is_3d and "y" in names and len(names) == 1:
+        msg = (
+            "2D plots only use 'x' as the input variable (y is the vertical axis). "
+            "Switch to the 3D tab to plot f(x, y), or replace 'y' with 'x'."
+        )
+    elif looks_like_implicit_mul:
+        msg = (
+            f"Unknown symbol {quoted} in '{expr_str}'. "
+            "Put '*' between letters when multiplying (for example 'w*x' instead of 'wx'), "
+            "or set the constant name in the Parameter field."
+        )
+    elif is_3d:
+        msg = (
+            f"Unknown symbol {quoted} in '{expr_str}'. "
+            "3D surfaces use 'x' and 'y' — if this is a constant, put its name in the Parameter field."
+        )
+    else:
+        msg = (
+            f"Unknown symbol {quoted} in '{expr_str}'. "
+            "2D plots use 'x' — if this is a constant, put its name in the Parameter field."
+        )
+
+    raise InvalidExpressionError(msg, details={"unbound_parameters": names})
+
+
 def _validate_range(bounds: list[float], label: str) -> tuple[float, float]:
     if len(bounds) != 2:
-        raise InvalidExpressionError(f"'{label}' must have exactly 2 values [min, max].")
+        raise InvalidExpressionError(f"Please provide both a minimum and maximum value for {label}.")
     lo, hi = float(bounds[0]), float(bounds[1])
     if not (np.isfinite(lo) and np.isfinite(hi)) or lo >= hi:
-        raise InvalidExpressionError(f"'{label}' must be finite with min < max.")
+        raise InvalidExpressionError("Range minimum must be smaller than maximum (for example -5 to 5).")
     if hi - lo > 1e5:
-        raise ComputationLimitError(f"'{label}' span exceeds maximum allowed range.")
+        raise ComputationLimitError("Plot range is too wide — try keeping the span under 100,000.")
     return lo, hi
 
 
@@ -89,10 +133,7 @@ def _generate_2d_plot(
         extra_vars = parsed.free_symbols - {var_sym}
         if extra_vars:
             names = sorted(s.name for s in extra_vars)
-            raise InvalidExpressionError(
-                f"Unbound parameter(s) {names} in 2D expression '{expr_str}'. Supply values in 'parameters'.",
-                details={"unbound_parameters": names},
-            )
+            _raise_unbound_symbol_error(names, is_3d=False, expr_str=expr_str, parameters=parameters)
 
         ys = _eval_grid_1d(parsed, var_sym, xs)
         traces.append(
@@ -255,10 +296,7 @@ def _generate_3d_plot(
         extra_vars = parsed.free_symbols - {x_sym, y_sym}
         if extra_vars:
             names = sorted(s.name for s in extra_vars)
-            raise InvalidExpressionError(
-                f"Unbound parameter(s) {names} in 3D expression '{expr_str}'. Supply values in 'parameters'.",
-                details={"unbound_parameters": names},
-            )
+            _raise_unbound_symbol_error(names, is_3d=True, expr_str=expr_str, parameters=parameters)
 
         if idx == 0:
             primary_parsed = parsed

@@ -84,9 +84,13 @@ def parse_symbol(name: str, assumptions: dict[str, str] | None = None) -> sp.Sym
     """Validate and construct a SymPy Symbol."""
     cleaned = name.strip()
     if not SYMBOL_NAME_RE.match(cleaned):
-        raise InvalidExpressionError(f"Invalid variable name '{name}'.")
+        raise InvalidExpressionError(
+            f"'{name}' isn't a valid symbol name. Start with a letter and use only letters, numbers, or '_'."
+        )
     if keyword.iskeyword(cleaned) or cleaned in ALLOWED_CONSTANTS or cleaned in ALLOWED_FUNCTIONS:
-        raise InvalidExpressionError(f"Reserved identifier '{cleaned}' cannot be used as a variable.")
+        raise InvalidExpressionError(
+            f"'{cleaned}' is a reserved constant or function name — please choose another symbol."
+        )
     return sp.Symbol(cleaned, **_build_symbol_kwargs(cleaned, assumptions))
 
 
@@ -170,7 +174,7 @@ class _AstCompiler:
                 return left * right
             if isinstance(node.op, ast.Div):
                 if right == 0:
-                    raise InvalidExpressionError("Explicit division by zero in expression.")
+                    raise InvalidExpressionError("Division by zero isn't allowed.")
                 return left / right
             if isinstance(node.op, ast.Pow):
                 if isinstance(right, sp.Number) and abs(float(right)) > MAX_EXPONENT_ABS:
@@ -186,7 +190,7 @@ class _AstCompiler:
             fn_name = node.func.id
             if fn_name not in ALLOWED_FUNCTIONS:
                 raise InvalidExpressionError(
-                    f"Unsupported mathematical function '{fn_name}'.",
+                    f"Unknown math function '{fn_name}'. Try functions like sin, cos, exp, log, or sqrt.",
                     details={"function": fn_name},
                 )
             fn_obj, allowed_arities = ALLOWED_FUNCTIONS[fn_name]
@@ -207,13 +211,17 @@ def parse_math_expression(expression: str, assumptions: dict[str, str] | None = 
     """Safely parse a single mathematical expression into a SymPy expression."""
     cleaned = validate_expression_bounds(expression)
     if "=" in cleaned:
-        raise InvalidExpressionError("Equations with '=' are not allowed where an expression is expected.")
+        raise InvalidExpressionError(
+            "Remove '=' here — enter an expression only (for example 'x^2 - 4' instead of 'y = x^2 - 4')."
+        )
 
     normalized = _normalize_implicit_multiplication(cleaned)
     try:
         tree = ast.parse(normalized, mode="eval")
     except SyntaxError as exc:
-        raise InvalidExpressionError(f"Invalid mathematical syntax: {exc.msg}") from exc
+        raise InvalidExpressionError(
+            "Check your expression syntax — make sure parentheses match and use '*' for multiplication (for example 'w*x')."
+        ) from exc
 
     return _AstCompiler(assumptions=assumptions).compile(tree)
 

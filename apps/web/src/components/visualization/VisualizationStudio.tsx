@@ -7,6 +7,7 @@ import {
   formatAsciiMathPreview,
   insertIntoInputElement,
 } from "../../utils/mathPreview";
+import { ErrorAlert } from "../common/ErrorAlert";
 import { MathKeypad } from "../common/MathKeypad";
 import {
   MatrixGridEditor,
@@ -628,7 +629,7 @@ export function VisualizationStudio({ plotSeed, theme }: VisualizationStudioProp
               />
             )}
 
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
               <div>
                 <label className="mb-1 block text-xs text-[var(--text-muted)]">
                   x min <span className="text-[10px] opacity-75">(blank = auto)</span>
@@ -775,19 +776,14 @@ export function VisualizationStudio({ plotSeed, theme }: VisualizationStudioProp
           <button
             type="submit"
             disabled={loading}
-            className="rounded bg-[var(--accent-ink)] px-4 py-1.5 text-xs font-semibold text-[var(--accent-ink-fg)] hover:opacity-90 disabled:opacity-60"
+            className="w-full rounded bg-[var(--accent-ink)] px-4 py-2 text-xs font-semibold text-[var(--accent-ink-fg)] hover:opacity-90 disabled:opacity-60 sm:ml-auto sm:w-auto sm:py-1.5"
           >
             {loading ? "Plotting..." : "Render Plot"}
           </button>
         </div>
       </form>
 
-      {error && (
-        <div className="rounded border border-rose-500/40 bg-rose-500/10 p-3 text-xs text-rose-600">
-          <span className="font-mono font-semibold">{error.code}: </span>
-          {error.message}
-        </div>
-      )}
+      {error && <ErrorAlert code={error.code} message={error.message} />}
 
       {plotData && (
         <div className="space-y-4">
@@ -820,7 +816,7 @@ export function VisualizationStudio({ plotSeed, theme }: VisualizationStudioProp
               <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">
                 Detected Key Points
               </h3>
-              <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
                 {plotData.key_points.map((pt, idx) => (
                   <div
                     key={`${pt.kind}-${idx}`}
