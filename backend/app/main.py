@@ -59,6 +59,12 @@ async def validation_error_handler(_: Request, exc: RequestValidationError) -> J
     )
 
 
+@app.api_route("/", methods=["GET", "HEAD"])
+def root() -> dict[str, str]:
+    """Root status endpoint for browser checks and uptime probes."""
+    return {"status": "ok", "message": "MathLab is working!"}
+
+
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(compute_router, prefix="/api/v1")
 app.include_router(reasoning_router, prefix="/api/v1")

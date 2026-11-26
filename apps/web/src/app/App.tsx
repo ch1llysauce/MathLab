@@ -1,6 +1,7 @@
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 
+import { MathLabLogo } from "../components/common/MathLabLogo";
 import { ToastContainer } from "../components/common/Toast";
 import {
   type IncomingNotebookCellSeed,
@@ -120,11 +121,14 @@ export function App() {
       <header className="border-b border-[var(--border-hairline)] bg-[var(--bg-surface)]">
         <div className="mx-auto flex max-w-[1380px] flex-wrap items-center justify-between gap-3 px-4 py-3.5 sm:px-8">
           <div className="flex min-w-0 flex-wrap items-center gap-3 sm:gap-6">
-            <div>
-              <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
-                MathLab
-              </h1>
-              <p className="text-xs text-[var(--text-muted)]">Computational Workbench</p>
+            <div className="flex items-center gap-2.5">
+              <MathLabLogo className="h-8 w-8 shrink-0" />
+              <div className="leading-tight">
+                <h1 className="text-lg font-bold tracking-tight text-[var(--text-primary)]">
+                  MathLab
+                </h1>
+                <p className="text-xs text-[var(--text-muted)]">Computational Workbench</p>
+              </div>
             </div>
 
             <nav className="flex max-w-full overflow-x-auto rounded border border-[var(--border-hairline)] bg-[var(--bg-subtle)] p-0.5 text-xs sm:text-[13px]">
